@@ -49,3 +49,60 @@ def extract_markdown_links(text):
     pattern = r'(?<!\!)\[(.*?)\]\((.*?)\)'
     matches = re.findall(pattern, text)
     return matches
+def split_nodes_image(old_nodes):
+    new_nodes = []
+    for node in old_nodes:
+        if node.text_type != TextType.TEXT:
+            new_nodes.append(node)
+            continue
+        text = node.text
+        matches = re.finditer(r'!\[(.*?)\]\((.*?)\)', text)
+        last_end = 0
+        temp_nodes = []
+        for match in matches:
+            start, end = match.span()
+            alt_text, url = match.groups()
+            if last_end < start:
+                temp_nodes.append(TextNode(text[last_end:start], TextType.TEXT))
+            temp_nodes.append(TextNode(alt_text, TextType.IMAGE, url))
+            last_end = end
+        if last_end < len(text):
+            temp_nodes.append(TextNode(text[last_end:], TextType.TEXT))
+        if not temp_nodes:
+            new_nodes.append(node)
+        else:
+            new_nodes.extend(temp_nodes)
+    return new_nodes
+
+def split_nodes_link(old_nodes):
+    new_nodes = []
+    for node in old_nodes:
+        if node.text_type != TextType.TEXT:
+            new_nodes.append(node)
+            continue
+        text = node.text
+        matches = re.finditer(r'(?<!\!)\[(.*?)\]\((.*?)\)', text)
+        last_end = 0
+        temp_nodes = []
+        for match in matches:
+            start, end = match.span()
+            link_text, url = match.groups()
+            if last_end < start:
+                temp_nodes.append(TextNode(text[last_end:start], TextType.TEXT))
+            temp_nodes.append(TextNode(link_text, TextType.LINK, url))
+            last_end = end
+        if last_end < len(text):
+            temp_nodes.append(TextNode(text[last_end:], TextType.TEXT))
+        if not temp_nodes:
+            new_nodes.append(node)
+        else:
+            new_nodes.extend(temp_nodes)
+    return new_nodes
+def text_to_textnodes(text):
+    nodes = [TextNode(text, TextType.TEXT)]
+    nodes = split_nodes_delimiter(nodes, "**", TextType.BOLD)
+    nodes = split_nodes_delimiter(nodes, "_", TextType.ITALIC)
+    nodes = split_nodes_delimiter(nodes, "`", TextType.CODE)
+    nodes = split_nodes_image(nodes)
+    nodes = split_nodes_link(nodes)
+    return nodes
