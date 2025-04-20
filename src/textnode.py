@@ -1,4 +1,5 @@
 from enum import Enum
+import re
 
 class TextType(Enum):
     TEXT = "text"
@@ -7,6 +8,14 @@ class TextType(Enum):
     CODE = "code"
     LINK = "link"
     IMAGE = "image"
+
+class BlockType(Enum):
+    HEADING = "heading"
+    CODE = "code"
+    QUOTE = "quote"
+    UNORDERED_LIST = "unordered_list"
+    ORDERED_LIST = "ordered_list"
+    PARAGRAPH = "paragraph"
 
 class TextNode:
     def __init__(self, text, text_type, url=None):
@@ -38,7 +47,6 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
                 node_type = text_type if i % 2 == 1 else TextType.TEXT
                 new_nodes.append(TextNode(part, node_type))
     return new_nodes
-import re
 
 def extract_markdown_images(text):
     pattern = r'!\[(.*?)\]\((.*?)\)'
@@ -49,6 +57,7 @@ def extract_markdown_links(text):
     pattern = r'(?<!\!)\[(.*?)\]\((.*?)\)'
     matches = re.findall(pattern, text)
     return matches
+
 def split_nodes_image(old_nodes):
     new_nodes = []
     for node in old_nodes:
@@ -98,6 +107,7 @@ def split_nodes_link(old_nodes):
         else:
             new_nodes.extend(temp_nodes)
     return new_nodes
+
 def text_to_textnodes(text):
     nodes = [TextNode(text, TextType.TEXT)]
     nodes = split_nodes_delimiter(nodes, "**", TextType.BOLD)
@@ -106,7 +116,31 @@ def text_to_textnodes(text):
     nodes = split_nodes_image(nodes)
     nodes = split_nodes_link(nodes)
     return nodes
+
 def markdown_to_blocks(markdown):
     blocks = markdown.split("\n\n")
     cleaned_blocks = [block.strip() for block in blocks if block.strip()]
     return cleaned_blocks
+
+def block_to_block_type(block):
+    # Heading: Starts with 1-6 # followed by a space
+    if re.match(r'^#{1,6}\s', block):
+        return BlockType.HEADING
+    # Code: Starts with ``` and ends with ```
+    if block.startswith("```") and block.endswith("```"):
+        return BlockType.CODE
+    # Quote: Every line starts with >
+    lines = block.split("\n")
+    if all(line.startswith(">") for line in lines if line):
+        return BlockType.QUOTE
+    # Unordered list: Every line starts with - followed by a space
+    if all(line.startswith("- ") for line in lines if line):
+        return BlockType.UNORDERED_LIST
+    # Ordered list: Lines start with number. (e.g., 1., 2.), starting at 1 and incrementing
+    if lines and re.match(r'^1\.\s', lines[0]):
+        for i, line in enumerate(lines, 1):
+            if line and not re.match(f'^{i}\\.\\s', line):
+                return BlockType.PARAGRAPH
+        return BlockType.ORDERED_LIST
+    # Default: Paragraph
+    return BlockType.PARAGRAPH

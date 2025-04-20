@@ -1,5 +1,5 @@
 import unittest
-from textnode import TextNode, TextType, split_nodes_delimiter, extract_markdown_images, extract_markdown_links, split_nodes_image, split_nodes_link, text_to_textnodes
+from textnode import TextNode, TextType, BlockType, split_nodes_delimiter, extract_markdown_images, extract_markdown_links, split_nodes_image, split_nodes_link, text_to_textnodes, markdown_to_blocks, block_to_block_type
 
 class TestTextNode(unittest.TestCase):
     def test_eq(self):
@@ -240,5 +240,61 @@ class TestTextNode(unittest.TestCase):
             nodes,
         )
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_markdown_to_blocks(self):
+        md = """
+This is **bolded** paragraph
+
+This is another paragraph with _italic_ text and `code` here
+This is the same paragraph on a new line
+
+- This is a list
+- with items
+"""
+        blocks = markdown_to_blocks(md)
+        self.assertListEqual(
+            [
+                "This is **bolded** paragraph",
+                "This is another paragraph with _italic_ text and `code` here\nThis is the same paragraph on a new line",
+                "- This is a list\n- with items",
+            ],
+            blocks,
+        )
+
+    def test_markdown_to_blocks_single_block(self):
+        md = "This is a single paragraph"
+        blocks = markdown_to_blocks(md)
+        self.assertListEqual(
+            ["This is a single paragraph"],
+            blocks,
+        )
+
+    def test_markdown_to_blocks_multiple_newlines(self):
+        md = """
+# Heading
+
+
+Paragraph with **bold**
+
+- List item
+- Another item
+
+
+"""
+        blocks = markdown_to_blocks(md)
+        self.assertListEqual(
+            [
+                "# Heading",
+                "Paragraph with **bold**",
+                "- List item\n- Another item",
+            ],
+            blocks,
+        )
+
+    def test_markdown_to_blocks_empty(self):
+        md = "\n\n\n"
+        blocks = markdown_to_blocks(md)
+        self.assertListEqual([], blocks)
+
+    def test_markdown_to_blocks_trailing_newlines(self):
+        md = "Paragraph one\n\nParagraph two\n\n\n"
+        blocks = markdown_to_blocks(md)
