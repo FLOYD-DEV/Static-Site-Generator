@@ -4,8 +4,9 @@
 
 Here's the deal, **I like Tolkien**.
 
-> <blockquote>"I am in fact a Hobbit in all but size."</blockquote>
->
+<!-- markdownlint-disable -->
+<blockquote>"I am in fact a Hobbit in all but size."</blockquote>
+<!-- markdownlint-enable -->
 > -- J.R.R. Tolkien
 
 ## Blog posts

@@ -1,11 +1,11 @@
 import os
+import sys
 import markdown
 import shutil
 from pathlib import Path
 from title_extractor import extract_title
-import re
 
-def generate_page(markdown_file_path, template_file_path, output_file_path):
+def generate_page(markdown_file_path, template_file_path, output_file_path, basepath):
     """Generate a single HTML page from a markdown file and a template."""
     print(f"Generating page: {output_file_path} from {markdown_file_path}")
     try:
@@ -19,14 +19,17 @@ def generate_page(markdown_file_path, template_file_path, output_file_path):
         title = extract_title(markdown_content)
         with open(template_file_path, 'r') as f:
             template = f.read()
-        html_page = template.replace('{{ Content }}', html_content).replace('{{ Title }}', title)
+        html_page = (template.replace('{{ Content }}', html_content)
+                            .replace('{{ Title }}', title)
+                            .replace('href="/', f'href="{basepath}')
+                            .replace('src="/', f'src="{basepath}'))
         os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
         with open(output_file_path, 'w') as f:
             f.write(html_page)
     except Exception as e:
         print(f"Error generating {output_file_path}: {e}")
 
-def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path, basepath):
     print(f"Processing content directory: {dir_path_content}")
     os.makedirs(dest_dir_path, exist_ok=True)
     for entry in os.listdir(dir_path_content):
@@ -34,20 +37,24 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
         if os.path.isdir(entry_path):
             dest_subdir = os.path.join(dest_dir_path, entry)
             print(f"Entering subdirectory: {entry_path}")
-            generate_pages_recursive(entry_path, template_path, dest_subdir)
+            generate_pages_recursive(entry_path, template_path, dest_subdir, basepath)
         elif os.path.isfile(entry_path) and entry_path.endswith('.md'):
             base_name = os.path.basename(entry_path).replace('.md', '.html')
             output_path = os.path.join(dest_dir_path, base_name)
             print(f"Found markdown file: {entry_path}")
-            generate_page(entry_path, template_path, output_path)
+            generate_page(entry_path, template_path, output_path, basepath)
 
 def main():
     print("Starting static site generation...")
     dir_path_content = "./content"
     dir_path_static = "./static"
-    dir_path_public = "./public"
+    dir_path_public = "./docs"
     template_path = "./template.html"
-    print(f"Content path: {dir_path_content}, Template: {template_path}, Output: {dir_path_public}")
+    basepath = sys.argv[1] if len(sys.argv) > 1 else "/"
+    basepath = basepath.rstrip("/") + "/"
+    if basepath.startswith("/"):
+        basepath = basepath[1:]
+    print(f"Content path: {dir_path_content}, Template: {template_path}, Output: {dir_path_public}, Basepath: {basepath}")
     if os.path.exists(dir_path_public):
         print("Clearing public directory...")
         shutil.rmtree(dir_path_public)
@@ -56,7 +63,7 @@ def main():
     from copystatic import copy_files_recursive
     copy_files_recursive(dir_path_static, dir_path_public)
     print("Generating HTML pages...")
-    generate_pages_recursive(dir_path_content, template_path, dir_path_public)
+    generate_pages_recursive(dir_path_content, template_path, dir_path_public, basepath)
     print("Site generation complete.")
 
 if __name__ == "__main__":
